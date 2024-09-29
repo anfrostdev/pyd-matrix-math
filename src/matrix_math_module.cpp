@@ -1,4 +1,6 @@
 #include <Python.h>
+#include "Convertor.h"
+#include "MatrixMath.h"
 
 static PyObject* validate_possibility_multiply_matrix(PyObject* self, PyObject* args) {
     PyObject* pyCfgMatrixOne = nullptr;
@@ -32,8 +34,70 @@ static PyObject* validate_possibility_multiply_matrix(PyObject* self, PyObject* 
     Py_RETURN_FALSE;
 }
 
+static PyObject* multiply_two_matrix(PyObject* self, PyObject* args) {
+    PyObject* pyCfgMatrixOne;
+    PyObject* pyCfgMatrixTwo;
+    PyObject* pyCfgMatrixResult;
+    PyObject* pyMatrixOne;
+    PyObject* pyMatrixTwo;
+    PyObject* pyMatrixResult;
+    Convertor conv;
+    MatrixMath matrixMath;
+
+    if (!PyArg_ParseTuple(args, "OOOOOO", &pyCfgMatrixOne, &pyMatrixOne, &pyCfgMatrixTwo, &pyMatrixTwo, &pyCfgMatrixResult, &pyMatrixResult)) {
+        PyErr_SetString(PyExc_Exception, "Not valid argument in function multiply_matrix (c++)");
+
+        return nullptr;
+    }
+
+    if (PyList_Size(pyCfgMatrixOne) != 3) {
+        PyErr_SetString(PyExc_Exception, "Not three arguments in config matrix one (c++)");
+
+        return nullptr;
+    }
+
+    if (PyList_Size(pyCfgMatrixTwo) != 3) {
+        PyErr_SetString(PyExc_Exception, "Not three arguments in config matrix two (c++)");
+
+        return nullptr;
+    }
+
+    try {
+        CfgMatrix cfgMatrixOne = conv.convert_pyobj_to_matrix_cfg(pyCfgMatrixOne);
+        CfgMatrix cfgMatrixTwo = conv.convert_pyobj_to_matrix_cfg(pyCfgMatrixTwo);
+
+        // Workaround for handling two matrices of different data types
+        if (cfgMatrixOne.is_type("double") || cfgMatrixTwo.is_type("double")) {
+            cfgMatrixOne.set_type_val("double");
+            cfgMatrixTwo.set_type_val("double");
+        }
+
+        MatrixData matrixOne = conv.convert_pyobj_to_matrix_data(cfgMatrixOne, pyMatrixOne);
+        MatrixData matrixTwo = conv.convert_pyobj_to_matrix_data(cfgMatrixTwo, pyMatrixTwo);
+        
+        // ToDo: Implement collection verbose output on flag value
+        //std::cout << matrixOne.dump_matrix();
+        //std::cout << matrixTwo.dump_matrix();
+
+        MatrixData matrixresult = matrixMath.multiply(matrixOne, matrixTwo);
+        // ToDo: Implement collection verbose output on flag value
+        //std::cout << matrixresult.dump_matrix();
+
+        conv.convert_matrix_data_to_pyobj(matrixresult, pyCfgMatrixResult, pyMatrixResult);
+    }
+    catch (const char* str_err) {
+        PyErr_SetString(PyExc_Exception, str_err);
+
+        return nullptr;
+    }
+
+    Py_RETURN_TRUE;
+}
+
 static PyMethodDef matrix_math_methods[] = {
     { "validate_possibility_multiply_matrix", (PyCFunction)validate_possibility_multiply_matrix, METH_O, nullptr },
+    { "multiply_two_matrix", (PyCFunction)multiply_two_matrix, METH_O, nullptr },
+
     { nullptr, nullptr, 0, nullptr }
 };
 
